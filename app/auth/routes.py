@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from app.database import get_db, User, UserRole
-from app.auth.schemas import UserCreate, UserLogin, Token, UserResponse
+from app.auth.schemas import UserCreate, Token, UserResponse
 from app.auth.utils import (
     verify_password,
     get_password_hash,
