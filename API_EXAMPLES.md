@@ -29,13 +29,12 @@ curl -X POST "http://localhost:8000/api/auth/register" \
 
 ### 2. Login
 
+**Using OAuth2 form data (recommended for Swagger UI and OAuth2 clients):**
+
 ```bash
 curl -X POST "http://localhost:8000/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "johndoe",
-    "password": "SecurePass123"
-  }'
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=johndoe&password=SecurePass123"
 ```
 
 **Response:**
@@ -413,7 +412,7 @@ class AIProductClient:
     def login(self, username, password):
         response = requests.post(
             f"{self.base_url}/api/auth/login",
-            json={"username": username, "password": password}
+            data={"username": username, "password": password}
         )
         data = response.json()
         self.token = data["access_token"]
