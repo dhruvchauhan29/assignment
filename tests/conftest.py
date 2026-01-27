@@ -86,7 +86,7 @@ def auth_token(client, test_user):
     """Get authentication token for test user."""
     response = client.post(
         "/api/auth/login",
-        json={"username": "testuser", "password": "testpass123"}
+        data={"username": "testuser", "password": "testpass123"}
     )
     return response.json()["access_token"]
 
@@ -96,6 +96,6 @@ def admin_token(client, test_admin):
     """Get authentication token for admin user."""
     response = client.post(
         "/api/auth/login",
-        json={"username": "admin", "password": "adminpass123"}
+        data={"username": "admin", "password": "adminpass123"}
     )
     return response.json()["access_token"]

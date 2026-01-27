@@ -40,7 +40,7 @@ def test_login_success(client, test_user):
     """Test successful login."""
     response = client.post(
         "/api/auth/login",
-        json={
+        data={
             "username": "testuser",
             "password": "testpass123"
         }
@@ -55,7 +55,7 @@ def test_login_wrong_password(client, test_user):
     """Test login with wrong password."""
     response = client.post(
         "/api/auth/login",
-        json={
+        data={
             "username": "testuser",
             "password": "wrongpassword"
         }
@@ -67,7 +67,7 @@ def test_login_nonexistent_user(client):
     """Test login with nonexistent user."""
     response = client.post(
         "/api/auth/login",
-        json={
+        data={
             "username": "nonexistent",
             "password": "password123"
         }
