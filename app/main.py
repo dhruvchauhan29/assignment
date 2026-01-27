@@ -18,7 +18,10 @@ from app.utils.routes import router as export_router
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    init_db()
+    # Only initialize DB if not in test mode (tests use SQLite)
+    import os
+    if os.getenv("TESTING") != "true":
+        init_db()
     yield
     # Shutdown (cleanup if needed)
 
