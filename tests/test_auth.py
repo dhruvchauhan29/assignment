@@ -40,7 +40,7 @@ def test_login_success(client, test_user):
     """Test successful login."""
     response = client.post(
         "/api/auth/login",
-        json={
+        data={
             "username": "testuser",
             "password": "testpass123"
         }
@@ -55,7 +55,7 @@ def test_login_wrong_password(client, test_user):
     """Test login with wrong password."""
     response = client.post(
         "/api/auth/login",
-        json={
+        data={
             "username": "testuser",
             "password": "wrongpassword"
         }
@@ -67,7 +67,7 @@ def test_login_nonexistent_user(client):
     """Test login with nonexistent user."""
     response = client.post(
         "/api/auth/login",
-        json={
+        data={
             "username": "nonexistent",
             "password": "password123"
         }
@@ -90,3 +90,30 @@ def test_get_current_user_no_token(client):
     """Test getting current user without token."""
     response = client.get("/api/auth/me")
     assert response.status_code == 401
+
+
+def test_oauth2_form_data_flow(client, test_user):
+    """Test OAuth2 Password Grant flow with form data."""
+    # Step 1: Login with OAuth2 form data (application/x-www-form-urlencoded)
+    response = client.post(
+        "/api/auth/login",
+        data={
+            "username": "testuser",
+            "password": "testpass123"
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    
+    # Step 2: Use the token to access a protected endpoint
+    token = data["access_token"]
+    response = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    user_data = response.json()
+    assert user_data["username"] == "testuser"

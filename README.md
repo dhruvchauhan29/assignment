@@ -114,11 +114,8 @@ curl -X POST "http://localhost:8000/api/auth/register" \
 
 ```bash
 curl -X POST "http://localhost:8000/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john",
-    "password": "securepassword"
-  }'
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=john&password=securepassword"
 ```
 
 Response:

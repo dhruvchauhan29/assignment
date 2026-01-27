@@ -2,11 +2,12 @@
 Authentication API routes.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from app.database import get_db, User, UserRole
-from app.auth.schemas import UserCreate, UserLogin, Token, UserResponse
+from app.auth.schemas import UserCreate, Token, UserResponse
 from app.auth.utils import (
     verify_password,
     get_password_hash,
@@ -56,16 +57,18 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(user_data: UserLogin, db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
     Login and receive JWT access token.
+    
+    Supports OAuth2 Password Grant flow for Swagger UI authorization.
     
     - **username**: Your username
     - **password**: Your password
     """
     # Authenticate user
-    user = db.query(User).filter(User.username == user_data.username).first()
-    if not user or not verify_password(user_data.password, user.hashed_password):
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
