@@ -36,7 +36,7 @@ class ArtifactResponse(BaseModel):
     artifact_type: str
     name: str
     content: str
-    metadata: Optional[Dict[str, Any]]
+    artifact_metadata: Optional[Dict[str, Any]]
     created_at: datetime
     
     class Config:
