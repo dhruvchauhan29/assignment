@@ -1,8 +1,8 @@
 """
 Project Pydantic schemas.
 """
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, field_validator
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -11,6 +11,15 @@ class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
     product_request: str
+    documents: Optional[List[str]] = None  # List of document file paths/URLs
+    
+    @field_validator('product_request')
+    @classmethod
+    def validate_product_request(cls, v):
+        """Validate product request is not empty."""
+        if not v or not v.strip():
+            raise ValueError('Product request cannot be empty')
+        return v.strip()
 
 
 class ProjectUpdate(BaseModel):
@@ -26,6 +35,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: Optional[str]
     product_request: str
+    documents: Optional[List[dict]] = None
     owner_id: int
     created_at: datetime
     updated_at: datetime

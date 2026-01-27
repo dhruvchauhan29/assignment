@@ -47,6 +47,7 @@ class ApprovalCreate(BaseModel):
     """Schema for creating/updating approval."""
     approved: bool
     feedback: Optional[str] = None
+    action: Optional[str] = "proceed"  # "proceed", "regenerate", "reject"
 
 
 class ApprovalResponse(BaseModel):
@@ -56,6 +57,7 @@ class ApprovalResponse(BaseModel):
     stage: str
     approved: Optional[bool]
     feedback: Optional[str]
+    action: Optional[str]
     created_at: datetime
     updated_at: datetime
     
