@@ -1,5 +1,10 @@
 """
-Test startup and initialization to verify both runtime errors are fixed.
+Test startup and initialization to verify runtime errors are fixed.
+
+This test suite validates the fixes for:
+1. SQLAlchemy InvalidRequestError (metadata attribute conflict)
+2. Missing email-validator dependency (Pydantic EmailStr validation)
+3. Bcrypt/passlib compatibility issue (password hashing)
 """
 import pytest
 from app.auth.utils import get_password_hash, verify_password
