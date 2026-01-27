@@ -1,7 +1,7 @@
 """
 Orchestrator using LangGraph for multi-agent workflow.
 """
-from typing import Dict, Any, TypedDict, Annotated
+from typing import Dict, Any, TypedDict, Annotated, Optional
 from langgraph.graph import StateGraph, END
 from sqlalchemy.orm import Session
 import operator
@@ -15,7 +15,7 @@ from app.agents.validation_agent import ValidationAgent
 from app.database import Run, Artifact, Approval, RunStatus, ArtifactType
 
 
-class WorkflowState(TypedDict):
+class WorkflowState(TypedDict, total=False):
     """State for the workflow graph."""
     run_id: int
     product_request: str

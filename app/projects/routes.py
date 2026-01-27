@@ -14,6 +14,7 @@ router = APIRouter(prefix="/api/projects", tags=["Projects"])
 
 # File upload constraints
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+MAX_FILES_PER_PROJECT = 10  # Maximum number of files per project
 ALLOWED_FILE_TYPES = {
     "application/pdf",
     "text/plain",
@@ -55,6 +56,13 @@ async def create_project(
     # Process file uploads if provided
     documents = []
     if files:
+        # Validate file count
+        if len(files) > MAX_FILES_PER_PROJECT:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Maximum {MAX_FILES_PER_PROJECT} files allowed per project"
+            )
+        
         for file in files:
             # Check file size
             file_content = await file.read()
@@ -73,9 +81,13 @@ async def create_project(
                     detail=f"File type '{file.content_type}' is not supported. Allowed types: PDF, TXT, MD, DOC, DOCX"
                 )
             
+            # Sanitize filename to prevent path traversal
+            import os
+            safe_filename = os.path.basename(file.filename)
+            
             # Store document metadata (in production, upload to S3/cloud storage)
             documents.append({
-                "filename": file.filename,
+                "filename": safe_filename,
                 "content_type": file.content_type,
                 "size": file_size,
                 # In production, add: "url": upload_to_storage(file_content)

@@ -258,7 +258,6 @@ def submit_approval(
         approval.approved = approval_data.approved
         approval.feedback = approval_data.feedback
         approval.action = approval_data.action or "proceed"
-        approval.updated_at = datetime.utcnow()
     else:
         # Create new approval
         approval = Approval(
