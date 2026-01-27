@@ -108,7 +108,7 @@ class Artifact(Base):
     artifact_type = Column(Enum(ArtifactType), nullable=False)
     name = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    metadata = Column(JSON)
+    artifact_metadata = Column("metadata", JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

@@ -116,7 +116,7 @@ class Orchestrator:
                 ArtifactType.RESEARCH, 
                 "research.md", 
                 result["content"],
-                result.get("metadata")
+                artifact_metadata=result.get("metadata")
             )
         else:
             state["error"] = result.get("error", "Research failed")
@@ -140,7 +140,7 @@ class Orchestrator:
                 ArtifactType.EPICS,
                 "epics.md",
                 result["content"],
-                result.get("metadata")
+                artifact_metadata=result.get("metadata")
             )
             
             # Create approval gate
@@ -166,7 +166,7 @@ class Orchestrator:
                 ArtifactType.STORIES,
                 "stories.md",
                 result["content"],
-                result.get("metadata")
+                artifact_metadata=result.get("metadata")
             )
             
             # Create approval gate
@@ -192,7 +192,7 @@ class Orchestrator:
                 ArtifactType.SPECS,
                 "specs.md",
                 result["content"],
-                result.get("metadata")
+                artifact_metadata=result.get("metadata")
             )
             
             # Create approval gate
@@ -218,7 +218,7 @@ class Orchestrator:
                 ArtifactType.CODE,
                 "code.md",
                 result["content"],
-                result.get("metadata")
+                artifact_metadata=result.get("metadata")
             )
         else:
             state["error"] = result.get("error", "Code generation failed")
@@ -241,7 +241,7 @@ class Orchestrator:
                 ArtifactType.VALIDATION,
                 "validation_report.md",
                 result["content"],
-                result.get("metadata")
+                artifact_metadata=result.get("metadata")
             )
         else:
             state["error"] = result.get("error", "Validation failed")
@@ -305,7 +305,7 @@ class Orchestrator:
         artifact_type: ArtifactType,
         name: str,
         content: str,
-        metadata: Dict[str, Any] = None
+        artifact_metadata: Dict[str, Any] = None
     ):
         """Save an artifact to the database."""
         artifact = Artifact(
@@ -313,7 +313,7 @@ class Orchestrator:
             artifact_type=artifact_type,
             name=name,
             content=content,
-            metadata=metadata
+            artifact_metadata=artifact_metadata
         )
         db.add(artifact)
         db.commit()
