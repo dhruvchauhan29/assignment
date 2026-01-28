@@ -17,7 +17,7 @@ class ProjectCreate(BaseModel):
     @classmethod
     def validate_product_request(cls, v: str) -> str:
         """Validate that product_request is not empty or whitespace-only."""
-        if not v or not v.strip():
+        if not v.strip():
             raise ValueError('Product Request cannot be empty or whitespace-only')
         return v.strip()
 
@@ -32,7 +32,7 @@ class ProjectUpdate(BaseModel):
     @classmethod
     def validate_product_request(cls, v: Optional[str]) -> Optional[str]:
         """Validate that product_request is not empty or whitespace-only if provided."""
-        if v is not None and (not v or not v.strip()):
+        if v is not None and not v.strip():
             raise ValueError('Product Request cannot be empty or whitespace-only')
         return v.strip() if v else None
 

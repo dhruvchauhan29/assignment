@@ -136,7 +136,7 @@ def test_create_project_empty_product_request(client, auth_token):
     assert response.status_code == 422
     data = response.json()
     assert "detail" in data
-    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])
+    assert any("Product Request cannot be empty or whitespace-only" in str(error) for error in data["detail"])
 
 
 def test_create_project_whitespace_only_product_request(client, auth_token):
@@ -153,7 +153,7 @@ def test_create_project_whitespace_only_product_request(client, auth_token):
     assert response.status_code == 422
     data = response.json()
     assert "detail" in data
-    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])
+    assert any("Product Request cannot be empty or whitespace-only" in str(error) for error in data["detail"])
 
 
 def test_create_project_trims_whitespace(client, auth_token):
@@ -191,7 +191,7 @@ def test_update_project_empty_product_request(client, auth_token, db, test_user)
     assert response.status_code == 422
     data = response.json()
     assert "detail" in data
-    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])
+    assert any("Product Request cannot be empty or whitespace-only" in str(error) for error in data["detail"])
 
 
 def test_update_project_whitespace_only_product_request(client, auth_token, db, test_user):
@@ -213,4 +213,4 @@ def test_update_project_whitespace_only_product_request(client, auth_token, db, 
     assert response.status_code == 422
     data = response.json()
     assert "detail" in data
-    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])
+    assert any("Product Request cannot be empty or whitespace-only" in str(error) for error in data["detail"])
