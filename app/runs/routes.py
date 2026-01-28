@@ -265,7 +265,7 @@ async def start_run(
 async def execute_workflow_task(run_id: int, product_request: str):
     """
     Background task to execute the orchestrator workflow.
-    
+
     Args:
         run_id: ID of the run to execute
         product_request: Product request text
@@ -423,7 +423,7 @@ async def submit_approval(
 async def continue_workflow_task(run_id: int, stage: str):
     """
     Background task to continue the orchestrator workflow after approval.
-    
+
     Args:
         run_id: ID of the run to continue
         stage: Stage that was approved

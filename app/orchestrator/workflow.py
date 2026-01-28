@@ -543,23 +543,23 @@ class Orchestrator:
     async def continue_run(self, run_id: int, from_stage: str):
         """
         Continue a run from a specific stage after approval.
-        
+
         Args:
             run_id: ID of the run to continue
             from_stage: Stage to continue from ('epics', 'stories', 'specs')
         """
         from app.database import SessionLocal
-        
+
         # Get current run state from database
         db = SessionLocal()
         try:
             run = db.query(Run).filter(Run.id == run_id).first()
             if not run:
                 raise ValueError(f"Run {run_id} not found")
-            
+
             # Get artifacts to reconstruct state
             artifacts = db.query(Artifact).filter(Artifact.run_id == run_id).all()
-            
+
             # Build state from artifacts
             state: WorkflowState = {
                 "run_id": run_id,
@@ -577,7 +577,7 @@ class Orchestrator:
                 "story_regeneration_count": 0,
                 "spec_regeneration_count": 0
             }
-            
+
             # Populate state from artifacts
             for artifact in artifacts:
                 if artifact.artifact_type == ArtifactType.RESEARCH:
@@ -592,13 +592,13 @@ class Orchestrator:
                     state["code"] = artifact.content
                 elif artifact.artifact_type == ArtifactType.VALIDATION:
                     state["validation"] = artifact.content
-            
+
             # Update run status to running
             run.status = RunStatus.RUNNING
             db.commit()
         finally:
             db.close()
-        
+
         try:
             # Continue execution based on stage
             if from_stage == "epics":
@@ -609,7 +609,7 @@ class Orchestrator:
                         Approval.run_id == run_id,
                         Approval.stage == "epics"
                     ).first()
-                    
+
                     if approval and approval.action == "regenerate":
                         # Re-run epics node
                         state = await self._epics_node(state)
@@ -620,7 +620,7 @@ class Orchestrator:
                         # Then wait for story approval
                 finally:
                     db.close()
-            
+
             elif from_stage == "stories":
                 # Check if we need to regenerate or continue to specs
                 db = SessionLocal()
@@ -629,7 +629,7 @@ class Orchestrator:
                         Approval.run_id == run_id,
                         Approval.stage == "stories"
                     ).first()
-                    
+
                     if approval and approval.action == "regenerate":
                         # Re-run stories node
                         state = await self._stories_node(state)
@@ -638,7 +638,7 @@ class Orchestrator:
                         state = await self._specs_node(state)
                 finally:
                     db.close()
-            
+
             elif from_stage == "specs":
                 # Check if we need to regenerate or continue to code
                 db = SessionLocal()
@@ -647,7 +647,7 @@ class Orchestrator:
                         Approval.run_id == run_id,
                         Approval.stage == "specs"
                     ).first()
-                    
+
                     if approval and approval.action == "regenerate":
                         # Re-run specs node
                         state = await self._specs_node(state)
@@ -658,9 +658,9 @@ class Orchestrator:
                         state = await self._complete_node(state)
                 finally:
                     db.close()
-            
+
             return state
-            
+
         except Exception as e:
             # Update error status
             db = SessionLocal()
@@ -683,7 +683,7 @@ class Orchestrator:
             product_request: Product request text
         """
         from app.database import SessionLocal
-        
+
         initial_state: WorkflowState = {
             "run_id": run_id,
             "product_request": product_request,
@@ -715,7 +715,7 @@ class Orchestrator:
         try:
             # Execute workflow
             final_state = await self.workflow.ainvoke(initial_state)
-            
+
             # Update final status
             db = SessionLocal()
             try:
