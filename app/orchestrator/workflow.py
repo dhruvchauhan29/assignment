@@ -18,9 +18,8 @@ from app.agents.validation_agent import ValidationAgent
 from app.database import Approval, Artifact, ArtifactType, Run, RunStatus
 from app.runs.progress_emitter import emit_progress
 
-# Configure logging
+# Get logger (don't override root config)
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 class WorkflowState(TypedDict, total=False):
@@ -114,9 +113,9 @@ class Orchestrator:
     async def _research_node(self, state: WorkflowState) -> WorkflowState:
         """Execute research phase."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering research_node")
 
             # Emit start event
@@ -195,10 +194,24 @@ The system will proceed with basic assumptions.
             state["error"] = f"Research node exception: {str(e)}"
             emit_progress(run_id, "research", f"Research phase error: {str(e)}")
             
-            # Even on exception, provide fallback
+            # Even on exception, provide fallback and save it
             if not state.get("research"):
-                state["research"] = "# Research (Error)\n\nAn error occurred during research."
+                fallback_content = "# Research (Error)\n\nAn error occurred during research."
+                state["research"] = fallback_content
                 state["current_stage"] = "research"
+                
+                # Try to save fallback artifact
+                try:
+                    self._save_artifact(
+                        db, state.get("run_id", 0),
+                        ArtifactType.RESEARCH,
+                        "research.md",
+                        fallback_content,
+                        artifact_metadata={"fallback": True, "exception": str(e)}
+                    )
+                    logger.info(f"[Run {run_id}] Fallback research artifact saved after exception")
+                except Exception as save_ex:
+                    logger.exception(f"[Run {run_id}] Failed to save fallback research: {str(save_ex)}")
             
             return state
         finally:
@@ -207,9 +220,9 @@ The system will proceed with basic assumptions.
     async def _epics_node(self, state: WorkflowState) -> WorkflowState:
         """Execute epic generation phase."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering epics_node")
 
             # Check if we need to incorporate feedback from rejection
@@ -350,9 +363,9 @@ The system will proceed with basic assumptions.
     async def _stories_node(self, state: WorkflowState) -> WorkflowState:
         """Execute story generation phase."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering stories_node")
 
             # Check if we need to incorporate feedback from rejection
@@ -479,9 +492,9 @@ The system will proceed with basic assumptions.
     async def _specs_node(self, state: WorkflowState) -> WorkflowState:
         """Execute spec generation phase."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering specs_node")
 
             # Check if we need to incorporate feedback from rejection
@@ -612,9 +625,9 @@ The system will proceed with basic assumptions.
     async def _code_node(self, state: WorkflowState) -> WorkflowState:
         """Execute code generation phase."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering code_node")
 
             emit_progress(run_id, "code", "Code generation started")
@@ -715,9 +728,9 @@ if __name__ == "__main__":
     async def _validation_node(self, state: WorkflowState) -> WorkflowState:
         """Execute validation phase."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering validation_node")
 
             emit_progress(run_id, "validation", "Validation started")
@@ -813,9 +826,9 @@ None (stub report)
     async def _complete_node(self, state: WorkflowState) -> WorkflowState:
         """Complete the workflow."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering complete_node")
             
             state["current_stage"] = "completed"
@@ -844,9 +857,9 @@ None (stub report)
     async def _wait_epic_approval_node(self, state: WorkflowState) -> WorkflowState:
         """Wait for epic approval."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering wait_epic_approval_node")
             
             state["current_stage"] = "waiting_epic_approval"
@@ -872,9 +885,9 @@ None (stub report)
     async def _wait_story_approval_node(self, state: WorkflowState) -> WorkflowState:
         """Wait for story approval."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering wait_story_approval_node")
             
             state["current_stage"] = "waiting_story_approval"
@@ -900,9 +913,9 @@ None (stub report)
     async def _wait_spec_approval_node(self, state: WorkflowState) -> WorkflowState:
         """Wait for spec approval."""
         from app.database import SessionLocal
+        run_id = state.get("run_id", "unknown")  # Define before try block
         db = SessionLocal()
         try:
-            run_id = state["run_id"]
             logger.info(f"[Run {run_id}] Entering wait_spec_approval_node")
             
             state["current_stage"] = "waiting_spec_approval"
