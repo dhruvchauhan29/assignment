@@ -673,6 +673,8 @@ class Orchestrator:
             finally:
                 db.close()
             raise
+
+    async def execute_run(self, run_id: int, product_request: str):
         """
         Execute a complete run through the workflow.
 
