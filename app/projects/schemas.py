@@ -1,9 +1,10 @@
 """
 Project Pydantic schemas.
 """
-from pydantic import BaseModel, field_validator
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, field_validator
 
 
 class ProjectCreate(BaseModel):
@@ -11,7 +12,7 @@ class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
     product_request: str
-    
+
     @field_validator('product_request')
     @classmethod
     def validate_product_request(cls, v: str) -> str:
@@ -26,7 +27,7 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     product_request: Optional[str] = None
-    
+
     @field_validator('product_request')
     @classmethod
     def validate_product_request(cls, v: Optional[str]) -> Optional[str]:
@@ -45,6 +46,6 @@ class ProjectResponse(BaseModel):
     owner_id: int
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
