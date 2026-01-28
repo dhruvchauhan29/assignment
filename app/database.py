@@ -65,6 +65,7 @@ class Project(Base):
     name = Column(String, nullable=False)
     description = Column(Text)
     product_request = Column(Text, nullable=False)
+    documents = Column(JSON)  # Store document metadata as JSON
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -124,6 +125,7 @@ class Approval(Base):
     stage = Column(String, nullable=False)  # epics, stories, specs
     approved = Column(Boolean, default=None, nullable=True)
     feedback = Column(Text)
+    action = Column(String, default="proceed")  # proceed, regenerate, reject
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

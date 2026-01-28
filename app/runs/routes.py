@@ -221,6 +221,12 @@ def submit_approval(
     - **stage**: One of 'epics', 'stories', 'specs'
     - **approved**: True to approve, False to reject
     - **feedback**: Optional feedback message
+    - **action**: 'proceed' (default), 'regenerate', or 'reject'
+    
+    **Actions:**
+    - `proceed` with `approved=True`: Approves and continues to next stage
+    - `regenerate` with `approved=False`: Rejects and triggers regeneration with feedback
+    - `reject` with `approved=False`: Rejects without regeneration
     """
     run = db.query(Run).join(Project).filter(
         Run.id == run_id,
@@ -233,6 +239,14 @@ def submit_approval(
             detail="Run not found"
         )
     
+    # Validate stage
+    valid_stages = ["epics", "stories", "specs"]
+    if stage not in valid_stages:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid stage. Must be one of: {', '.join(valid_stages)}"
+        )
+    
     # Check if approval already exists
     approval = db.query(Approval).filter(
         Approval.run_id == run_id,
@@ -243,13 +257,15 @@ def submit_approval(
         # Update existing approval
         approval.approved = approval_data.approved
         approval.feedback = approval_data.feedback
+        approval.action = approval_data.action or "proceed"
     else:
         # Create new approval
         approval = Approval(
             run_id=run_id,
             stage=stage,
             approved=approval_data.approved,
-            feedback=approval_data.feedback
+            feedback=approval_data.feedback,
+            action=approval_data.action or "proceed"
         )
         db.add(approval)
     
@@ -259,11 +275,20 @@ def submit_approval(
     # Emit SSE update
     if run_id not in run_updates:
         run_updates[run_id] = []
+    
+    action_msg = ""
+    if approval_data.action == "regenerate":
+        action_msg = " - will regenerate with feedback"
+    elif approval_data.action == "reject":
+        action_msg = " - rejected"
+    
     run_updates[run_id].append({
         "stage": stage,
-        "message": f"Stage '{stage}' {'approved' if approval_data.approved else 'rejected'}",
+        "message": f"Stage '{stage}' {'approved' if approval_data.approved else 'rejected'}{action_msg}",
         "timestamp": datetime.utcnow().isoformat()
     })
+    
+    # TODO: If action is "regenerate", trigger regeneration workflow
     
     return approval
 

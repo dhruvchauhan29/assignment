@@ -1,7 +1,7 @@
 """
 Orchestrator using LangGraph for multi-agent workflow.
 """
-from typing import Dict, Any, TypedDict, Annotated
+from typing import Dict, Any, TypedDict, Annotated, Optional
 from langgraph.graph import StateGraph, END
 from sqlalchemy.orm import Session
 import operator
@@ -15,7 +15,7 @@ from app.agents.validation_agent import ValidationAgent
 from app.database import Run, Artifact, Approval, RunStatus, ArtifactType
 
 
-class WorkflowState(TypedDict):
+class WorkflowState(TypedDict, total=False):
     """State for the workflow graph."""
     run_id: int
     product_request: str
@@ -28,6 +28,9 @@ class WorkflowState(TypedDict):
     messages: Annotated[list, operator.add]
     current_stage: str
     error: str
+    epic_regeneration_count: int
+    story_regeneration_count: int
+    spec_regeneration_count: int
 
 
 class Orchestrator:
@@ -125,9 +128,26 @@ class Orchestrator:
     
     async def _epics_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute epic generation phase."""
+        # Check if we need to incorporate feedback from rejection
+        feedback = ""
+        approval = db.query(Approval).filter(
+            Approval.run_id == state["run_id"],
+            Approval.stage == "epics"
+        ).first()
+        
+        if approval and approval.action == "regenerate" and approval.feedback:
+            feedback = approval.feedback
+            # Increment regeneration count
+            regeneration_count = state.get("epic_regeneration_count", 0) + 1
+            state["epic_regeneration_count"] = regeneration_count
+        else:
+            regeneration_count = 0
+        
         result = await self.epic_agent.execute({
             "product_request": state["product_request"],
-            "research": state["research"]
+            "research": state["research"],
+            "feedback": feedback,
+            "regeneration_count": regeneration_count
         })
         
         if result["success"]:
@@ -143,8 +163,8 @@ class Orchestrator:
                 artifact_metadata=result.get("metadata")
             )
             
-            # Create approval gate
-            self._create_approval(db, state["run_id"], "epics")
+            # Create or update approval gate
+            self._create_or_update_approval(db, state["run_id"], "epics")
         else:
             state["error"] = result.get("error", "Epic generation failed")
         
@@ -152,8 +172,24 @@ class Orchestrator:
     
     async def _stories_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute story generation phase."""
+        # Check if we need to incorporate feedback from rejection
+        feedback = ""
+        approval = db.query(Approval).filter(
+            Approval.run_id == state["run_id"],
+            Approval.stage == "stories"
+        ).first()
+        
+        if approval and approval.action == "regenerate" and approval.feedback:
+            feedback = approval.feedback
+            regeneration_count = state.get("story_regeneration_count", 0) + 1
+            state["story_regeneration_count"] = regeneration_count
+        else:
+            regeneration_count = 0
+        
         result = await self.story_agent.execute({
-            "epics": state["epics"]
+            "epics": state["epics"],
+            "feedback": feedback,
+            "regeneration_count": regeneration_count
         })
         
         if result["success"]:
@@ -169,8 +205,8 @@ class Orchestrator:
                 artifact_metadata=result.get("metadata")
             )
             
-            # Create approval gate
-            self._create_approval(db, state["run_id"], "stories")
+            # Create or update approval gate
+            self._create_or_update_approval(db, state["run_id"], "stories")
         else:
             state["error"] = result.get("error", "Story generation failed")
         
@@ -178,8 +214,24 @@ class Orchestrator:
     
     async def _specs_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute spec generation phase."""
+        # Check if we need to incorporate feedback from rejection
+        feedback = ""
+        approval = db.query(Approval).filter(
+            Approval.run_id == state["run_id"],
+            Approval.stage == "specs"
+        ).first()
+        
+        if approval and approval.action == "regenerate" and approval.feedback:
+            feedback = approval.feedback
+            regeneration_count = state.get("spec_regeneration_count", 0) + 1
+            state["spec_regeneration_count"] = regeneration_count
+        else:
+            regeneration_count = 0
+        
         result = await self.spec_agent.execute({
-            "stories": state["stories"]
+            "stories": state["stories"],
+            "feedback": feedback,
+            "regeneration_count": regeneration_count
         })
         
         if result["success"]:
@@ -195,8 +247,8 @@ class Orchestrator:
                 artifact_metadata=result.get("metadata")
             )
             
-            # Create approval gate
-            self._create_approval(db, state["run_id"], "specs")
+            # Create or update approval gate
+            self._create_or_update_approval(db, state["run_id"], "specs")
         else:
             state["error"] = result.get("error", "Spec generation failed")
         
@@ -335,6 +387,28 @@ class Orchestrator:
             db.add(approval)
             db.commit()
     
+    def _create_or_update_approval(self, db: Session, run_id: int, stage: str):
+        """Create or reset an approval gate for regeneration."""
+        approval = db.query(Approval).filter(
+            Approval.run_id == run_id,
+            Approval.stage == stage
+        ).first()
+        
+        if approval:
+            # Reset approval status for regenerated content
+            approval.approved = None
+            approval.action = "proceed"
+            # Keep the feedback for reference
+        else:
+            approval = Approval(
+                run_id=run_id,
+                stage=stage,
+                approved=None
+            )
+            db.add(approval)
+        
+        db.commit()
+    
     async def execute_run(self, run_id: int, product_request: str, db: Session):
         """
         Execute a complete run through the workflow.
@@ -355,7 +429,10 @@ class Orchestrator:
             "validation": "",
             "messages": [],
             "current_stage": "initialized",
-            "error": ""
+            "error": "",
+            "epic_regeneration_count": 0,
+            "story_regeneration_count": 0,
+            "spec_regeneration_count": 0
         }
         
         # Update run status

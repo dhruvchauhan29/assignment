@@ -4,21 +4,39 @@ A backend-only multi-agent AI system that transforms high-level Product Requests
 
 ## 🎯 Features
 
+### ✨ Milestone-Driven Workflow
+- **Foundation (Milestone 1)**: Complete project creation with input validation and document uploads
+- **Research-First (Milestone 2)**: Mandatory evidence-based research before planning
+- **Comprehensive Epics (Milestone 3)**: Full epic planning with priorities, dependencies, risks, and Mermaid diagrams
+- **Approval Gates**: User approval with regeneration support at every stage
+- **Interruptible Execution**: Pause/resume workflow at any point
+
+### 🔧 Core Capabilities
 - **Multi-Agent Architecture**: Research, Epic, Story, Spec, Code, and Validation agents powered by LangGraph
 - **FastAPI Backend**: RESTful APIs with comprehensive Swagger documentation
 - **Real-Time Updates**: Server-Sent Events (SSE) for live progress tracking
-- **Approval Gates**: User approval required between stages (epics, stories, specs)
+- **Enhanced Approval System**: Approve, reject, or regenerate with feedback at each gate
 - **JWT Authentication**: User and Admin role-based access control
-- **Artifact Storage**: PostgreSQL storage for all generated artifacts
+- **Document Upload**: Support for PDF, TXT, MD, DOC, DOCX (max 20MB)
+- **Artifact Storage**: PostgreSQL storage for all generated artifacts with rich metadata
 - **Observability**: Langfuse integration for LLM call tracing and token tracking
 - **Export Functionality**: Download epics, stories, specs, code, and validation reports
 
 ## 🏗 Architecture
 
 ```
-Product Request → Research → Epics → [Approval] → Stories → [Approval] → 
-Specs → [Approval] → Code → Validation → Artifacts
+Product Request (+ Documents) → Research (URLs + Analysis) → 
+Epics (P0/P1/P2 + Dependencies + Mermaid) → [Approval Gate] → 
+Stories (Given/When/Then) → [Approval Gate] → 
+Specs (API + Models + Tests) → [Approval Gate] → 
+Code → Validation → Artifacts
 ```
+
+Each stage:
+- ✅ Produces persisted artifacts with metadata
+- ✅ Requires explicit approval before advancing
+- ✅ Supports regeneration with user feedback
+- ✅ Can be paused and resumed
 
 ### Project Structure
 
@@ -135,16 +153,29 @@ curl -H "Authorization: Bearer YOUR_TOKEN" ...
 
 ### 1. Create a Project
 
+**Option 1: Simple project (JSON)**
 ```bash
 curl -X POST "http://localhost:8000/api/projects" \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "E-commerce Platform",
-    "description": "Modern e-commerce platform with AI recommendations",
-    "product_request": "Build an e-commerce platform with product catalog, shopping cart, checkout, payment processing, and AI-powered product recommendations."
-  }'
+  -F "name=E-commerce Platform" \
+  -F "description=Modern e-commerce platform with AI recommendations" \
+  -F "product_request=Build an e-commerce platform with product catalog, shopping cart, checkout, payment processing, and AI-powered product recommendations."
 ```
+
+**Option 2: With document uploads**
+```bash
+curl -X POST "http://localhost:8000/api/projects" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "name=E-commerce Platform" \
+  -F "product_request=Build an e-commerce platform..." \
+  -F "files=@requirements.pdf" \
+  -F "files=@architecture.md"
+```
+
+**Validation:**
+- Product request cannot be empty (→ 400)
+- Files must be < 20MB (→ 413)
+- Supported file types: PDF, TXT, MD, DOC, DOCX (→ 415 for others)
 
 ### 2. Create a Run
 
@@ -187,19 +218,45 @@ data: {"stage": "epics", "message": "Epic generation completed", "timestamp": "2
 
 ### 5. Approve Stages
 
-After epics are generated:
+After epics are generated, you can approve, reject, or request regeneration:
 
+**Option 1: Approve and Proceed**
 ```bash
 curl -X POST "http://localhost:8000/api/runs/1/approvals/epics" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "approved": true,
-    "feedback": "Looks good, proceed"
+    "action": "proceed",
+    "feedback": "Looks good, proceed to stories"
   }'
 ```
 
-Repeat for stories and specs stages.
+**Option 2: Reject and Regenerate with Feedback**
+```bash
+curl -X POST "http://localhost:8000/api/runs/1/approvals/epics" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "approved": false,
+    "action": "regenerate",
+    "feedback": "Please add more detail to Epic 2 and include security considerations"
+  }'
+```
+
+**Option 3: Reject without Regeneration**
+```bash
+curl -X POST "http://localhost:8000/api/runs/1/approvals/epics" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "approved": false,
+    "action": "reject",
+    "feedback": "This approach does not meet our requirements"
+  }'
+```
+
+Repeat for `stories` and `specs` stages.
 
 ### 6. Get Artifacts
 
@@ -226,15 +283,30 @@ curl "http://localhost:8000/api/export/1/validation.md" \
 
 ## 🎭 Multi-Agent System
 
-### Research Agent
-- Performs domain research
-- Gathers context about similar products
-- Identifies key technologies and considerations
+### Research Agent (Milestone 2: Evidence Before Planning)
+- **Mandatory first step** - no planning without research
+- Performs comprehensive domain research
+- **Output includes:**
+  - URLs consulted with relevance scores (citations)
+  - Key findings summary in structured sections
+  - Technology stack recommendations with rationale
+  - Architecture approach suggestions
+  - Implementation considerations and risks
+  - Influence on downstream planning (epics, stories, specs)
+- Grounds all planning in real-world evidence
 
-### Epic Agent
-- Generates 3-5 epics from product request
-- Includes priority, scope, dependencies
-- Creates Mermaid dependency diagrams
+### Epic Agent (Milestone 3: Comprehensive Epic Planning)
+- Generates 3-5 comprehensive epics from research
+- **Each epic includes:**
+  - **Goal**: Clear, action-oriented objective
+  - **Priority**: P0 (Critical) / P1 (High) / P2 (Medium) with reasoning
+  - **In-Scope**: Explicit deliverables included
+  - **Out-of-Scope**: Explicit items NOT included
+  - **Dependencies**: Epic and external dependencies
+  - **Risks & Assumptions**: With mitigation strategies
+  - **Success Metrics**: Quantifiable measures
+- **Generates Mermaid dependency diagram** with color-coded priorities
+- **Supports regeneration** with user feedback incorporation
 
 ### Story Agent
 - Generates user stories for each epic
@@ -269,6 +341,49 @@ Resume execution:
 curl -X POST "http://localhost:8000/api/runs/1/start" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
+
+## 🎯 Milestone System Features
+
+### Milestone 1: Foundation - User Can Start
+- ✅ JWT-based authentication with User/Admin roles
+- ✅ Project creation with input validation
+  - Empty product request → 400 Bad Request
+  - Files > 20MB → 413 Request Entity Too Large
+  - Unsupported file types → 415 Unsupported Media Type
+- ✅ Document upload support (PDF, TXT, MD, DOC, DOCX)
+- ✅ Run lifecycle management (pending → running → paused → completed/failed)
+
+### Milestone 2: Research - Evidence Before Planning
+- ✅ **Mandatory research** before any planning
+- ✅ Research artifacts include:
+  - URLs consulted with titles, summaries, and relevance scores
+  - Key findings organized in sections
+  - Technology recommendations with rationale
+  - Architecture approach explanation
+  - Planning influence documentation
+- ✅ Research stored as first-class artifact with rich metadata
+
+### Milestone 3: Epic Generation with Approval Gates
+- ✅ Comprehensive epic structure with all required fields
+- ✅ Priority system (P0/P1/P2) with business reasoning
+- ✅ Explicit in-scope and out-of-scope definitions
+- ✅ Dependency tracking (epic + external)
+- ✅ Risk assessment with mitigation strategies
+- ✅ Success metrics for each epic
+- ✅ **Mermaid dependency diagram** with color-coded priorities
+- ✅ **Approval gate with actions:**
+  - Approve → Continue to stories
+  - Regenerate → Incorporate feedback and regenerate
+  - Reject → Stop without regeneration
+- ✅ **No stories generated until epics approved**
+
+### Milestone 4: User Story & Spec Generation
+- ✅ Stories generated only from approved epics
+- ✅ Given/When/Then acceptance criteria
+- ✅ Edge cases and NFRs included
+- ✅ Specs with API contracts, data models, test cases
+- ✅ Approval gates at stories and specs stages
+- ✅ Regeneration support with feedback incorporation
 
 ## 👨‍💼 Admin Features
 

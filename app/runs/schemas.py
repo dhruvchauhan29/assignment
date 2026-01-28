@@ -1,7 +1,7 @@
 """
 Run Pydantic schemas.
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -47,6 +47,16 @@ class ApprovalCreate(BaseModel):
     """Schema for creating/updating approval."""
     approved: bool
     feedback: Optional[str] = None
+    action: Optional[str] = "proceed"  # "proceed", "regenerate", "reject"
+    
+    @field_validator('action')
+    @classmethod
+    def validate_action(cls, v):
+        """Validate action is one of the allowed values."""
+        valid_actions = ["proceed", "regenerate", "reject"]
+        if v and v not in valid_actions:
+            raise ValueError(f"Action must be one of: {', '.join(valid_actions)}")
+        return v or "proceed"
 
 
 class ApprovalResponse(BaseModel):
@@ -56,6 +66,7 @@ class ApprovalResponse(BaseModel):
     stage: str
     approved: Optional[bool]
     feedback: Optional[str]
+    action: Optional[str]
     created_at: datetime
     updated_at: datetime
     

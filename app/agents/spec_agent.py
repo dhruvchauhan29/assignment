@@ -13,19 +13,32 @@ class SpecAgent(BaseAgent):
         Generate formal specifications from user stories.
         
         Args:
-            input_data: Contains 'stories' key
+            input_data: Contains 'stories', optional 'feedback', 'regeneration_count' keys
             
         Returns:
             Generated specifications with API contracts and data models
         """
         try:
             stories = input_data.get("stories", "")
+            feedback = input_data.get("feedback", "")
+            regeneration_count = input_data.get("regeneration_count", 0)
+            
+            feedback_section = ""
+            if feedback:
+                feedback_section = f"""
+
+## User Feedback from Previous Iteration
+{feedback}
+
+Please incorporate this feedback into the specification generation.
+"""
             
             prompt = f"""
 You are a Specification agent. Based on user stories, generate formal technical specifications.
 
 User Stories:
 {stories}
+{feedback_section}
 
 For each story, provide:
 - Spec ID (SPEC-XXX)
@@ -88,7 +101,8 @@ class Model:
                 "spec_count": spec_content.count("## Specification"),
                 "has_api_contracts": "API Contracts" in spec_content,
                 "has_data_models": "Data Models" in spec_content,
-                "has_test_cases": "Test Cases" in spec_content
+                "has_test_cases": "Test Cases" in spec_content,
+                "regeneration_count": regeneration_count
             }
             
             return self.format_output(spec_content, metadata)
