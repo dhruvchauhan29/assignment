@@ -2,7 +2,6 @@
 Tests for Milestone 1: Foundation - User Can Start
 Tests input validation for project creation.
 """
-import pytest
 
 
 def test_create_project_empty_product_request(client, auth_token):

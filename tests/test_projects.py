@@ -1,7 +1,6 @@
 """
 Tests for project endpoints.
 """
-import pytest
 from app.database import Project
 
 
@@ -45,7 +44,7 @@ def test_list_projects(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
+
     response = client.get(
         "/api/projects",
         headers={"Authorization": f"Bearer {auth_token}"}
@@ -66,7 +65,7 @@ def test_get_project(client, auth_token, db, test_user):
     db.add(project)
     db.commit()
     db.refresh(project)
-    
+
     response = client.get(
         f"/api/projects/{project.id}",
         headers={"Authorization": f"Bearer {auth_token}"}
@@ -87,7 +86,7 @@ def test_update_project(client, auth_token, db, test_user):
     db.add(project)
     db.commit()
     db.refresh(project)
-    
+
     response = client.put(
         f"/api/projects/{project.id}",
         headers={"Authorization": f"Bearer {auth_token}"},
@@ -108,13 +107,13 @@ def test_delete_project(client, auth_token, db, test_user):
     db.add(project)
     db.commit()
     db.refresh(project)
-    
+
     response = client.delete(
         f"/api/projects/{project.id}",
         headers={"Authorization": f"Bearer {auth_token}"}
     )
     assert response.status_code == 204
-    
+
     # Verify deletion
     response = client.get(
         f"/api/projects/{project.id}",

@@ -1,13 +1,14 @@
 """
 Project API routes.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from typing import List
 
-from app.database import get_db, Project, User
-from app.projects.schemas import ProjectCreate, ProjectUpdate, ProjectResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.auth.utils import get_current_user
+from app.database import Project, User, get_db
+from app.projects.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
 
 router = APIRouter(prefix="/api/projects", tags=["Projects"])
 
@@ -20,11 +21,11 @@ async def create_project(
 ):
     """
     Create a new project with text-only product request.
-    
+
     - **name**: Project name (required)
     - **product_request**: High-level product request/requirements (required, cannot be empty)
     - **description**: Optional project description
-    
+
     **Validation:**
     - Empty product_request → 400 Bad Request
     """
@@ -34,7 +35,7 @@ async def create_project(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Product request cannot be empty"
         )
-    
+
     # Create project
     db_project = Project(
         name=project_data.name,
@@ -46,7 +47,7 @@ async def create_project(
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
-    
+
     return db_project
 
 
@@ -63,7 +64,7 @@ def list_projects(
     projects = db.query(Project).filter(
         Project.owner_id == current_user.id
     ).offset(skip).limit(limit).all()
-    
+
     return projects
 
 
@@ -80,13 +81,13 @@ def get_project(
         Project.id == project_id,
         Project.owner_id == current_user.id
     ).first()
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     return project
 
 
@@ -104,13 +105,13 @@ def update_project(
         Project.id == project_id,
         Project.owner_id == current_user.id
     ).first()
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     # Update fields
     if project_data.name is not None:
         project.name = project_data.name
@@ -118,10 +119,10 @@ def update_project(
         project.description = project_data.description
     if project_data.product_request is not None:
         project.product_request = project_data.product_request
-    
+
     db.commit()
     db.refresh(project)
-    
+
     return project
 
 
@@ -138,14 +139,14 @@ def delete_project(
         Project.id == project_id,
         Project.owner_id == current_user.id
     ).first()
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     db.delete(project)
     db.commit()
-    
+
     return None
