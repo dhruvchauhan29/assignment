@@ -11,7 +11,6 @@ class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
     product_request: str
-    documents: Optional[List[str]] = None  # List of document file paths/URLs
     
     @field_validator('product_request')
     @classmethod

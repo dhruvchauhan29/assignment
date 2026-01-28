@@ -10,7 +10,7 @@ def test_create_project(client, auth_token):
     response = client.post(
         "/api/projects",
         headers={"Authorization": f"Bearer {auth_token}"},
-        data={
+        json={
             "name": "Test Project",
             "description": "A test project",
             "product_request": "Build a simple todo app"
@@ -27,7 +27,7 @@ def test_create_project_no_auth(client):
     """Test creating a project without authentication."""
     response = client.post(
         "/api/projects",
-        data={
+        json={
             "name": "Test Project",
             "product_request": "Build something"
         }
