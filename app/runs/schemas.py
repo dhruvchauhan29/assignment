@@ -1,9 +1,10 @@
 """
 Run Pydantic schemas.
 """
-from pydantic import BaseModel, field_validator
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, field_validator
 
 
 class RunCreate(BaseModel):
@@ -24,7 +25,7 @@ class RunResponse(BaseModel):
     total_tokens: int
     prompt_tokens: int
     completion_tokens: int
-    
+
     class Config:
         from_attributes = True
 
@@ -38,7 +39,7 @@ class ArtifactResponse(BaseModel):
     content: str
     artifact_metadata: Optional[Dict[str, Any]]
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -48,7 +49,7 @@ class ApprovalCreate(BaseModel):
     approved: bool
     feedback: Optional[str] = None
     action: Optional[str] = "proceed"  # "proceed", "regenerate", "reject"
-    
+
     @field_validator('action')
     @classmethod
     def validate_action(cls, v):
@@ -69,7 +70,7 @@ class ApprovalResponse(BaseModel):
     action: Optional[str]
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -88,6 +89,6 @@ class RunStatusResponse(BaseModel):
     run_id: int
     status: str
     current_stage: str
-    
+
     class Config:
         from_attributes = True
