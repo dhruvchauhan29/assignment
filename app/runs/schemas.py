@@ -81,3 +81,13 @@ class ProgressUpdate(BaseModel):
     message: str
     timestamp: datetime
     data: Optional[Dict[str, Any]] = None
+
+
+class RunStatusResponse(BaseModel):
+    """Schema for run status response."""
+    run_id: int
+    status: str
+    current_stage: str
+    
+    class Config:
+        from_attributes = True

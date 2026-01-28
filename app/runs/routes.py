@@ -12,14 +12,12 @@ from datetime import datetime
 from app.database import get_db, Run, Project, User, Artifact, Approval, RunStatus
 from app.runs.schemas import (
     RunCreate, RunResponse, ArtifactResponse, 
-    ApprovalCreate, ApprovalResponse
+    ApprovalCreate, ApprovalResponse, RunStatusResponse
 )
 from app.auth.utils import get_current_user
+from app.runs.progress_emitter import emit_progress, get_updates
 
 router = APIRouter(prefix="/api/runs", tags=["Runs"])
-
-# In-memory store for SSE connections (in production, use Redis/message queue)
-run_updates = {}
 
 
 @router.post("", response_model=RunResponse, status_code=status.HTTP_201_CREATED)
@@ -81,6 +79,38 @@ def get_run(
     return run
 
 
+@router.get("/{run_id}/status", response_model=RunStatusResponse)
+def get_run_status(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get the current status and stage of a run.
+    
+    Returns:
+    - **run_id**: ID of the run
+    - **status**: Current execution status (pending, running, paused, completed, failed)
+    - **current_stage**: Current workflow stage (research, epics, stories, specs, code, validation)
+    """
+    run = db.query(Run).join(Project).filter(
+        Run.id == run_id,
+        Project.owner_id == current_user.id
+    ).first()
+    
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Run not found"
+        )
+    
+    return RunStatusResponse(
+        run_id=run.id,
+        status=run.status.value if hasattr(run.status, 'value') else run.status,
+        current_stage=run.current_stage
+    )
+
+
 @router.get("/{run_id}/artifacts", response_model=List[ArtifactResponse])
 def get_run_artifacts(
     run_id: int,
@@ -104,6 +134,68 @@ def get_run_artifacts(
     
     artifacts = db.query(Artifact).filter(Artifact.run_id == run_id).all()
     return artifacts
+
+
+@router.get("/{run_id}/epics", response_model=List[ArtifactResponse])
+def get_run_epics(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get epic artifacts for a run.
+    
+    Returns all epic artifacts generated during the run's execution.
+    """
+    # Verify run exists and belongs to user
+    run = db.query(Run).join(Project).filter(
+        Run.id == run_id,
+        Project.owner_id == current_user.id
+    ).first()
+    
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Run not found"
+        )
+    
+    from app.database import ArtifactType
+    epics = db.query(Artifact).filter(
+        Artifact.run_id == run_id,
+        Artifact.artifact_type == ArtifactType.EPICS
+    ).all()
+    return epics
+
+
+@router.get("/{run_id}/stories", response_model=List[ArtifactResponse])
+def get_run_stories(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get story artifacts for a run.
+    
+    Returns all story artifacts generated during the run's execution.
+    """
+    # Verify run exists and belongs to user
+    run = db.query(Run).join(Project).filter(
+        Run.id == run_id,
+        Project.owner_id == current_user.id
+    ).first()
+    
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Run not found"
+        )
+    
+    from app.database import ArtifactType
+    stories = db.query(Artifact).filter(
+        Artifact.run_id == run_id,
+        Artifact.artifact_type == ArtifactType.STORIES
+    ).all()
+    return stories
 
 
 @router.post("/{run_id}/start")
@@ -138,13 +230,11 @@ def start_run(
     db.commit()
     
     # Emit SSE update
-    if run_id not in run_updates:
-        run_updates[run_id] = []
-    run_updates[run_id].append({
-        "stage": "research",
-        "message": "Research phase started",
-        "timestamp": datetime.utcnow().isoformat()
-    })
+    emit_progress(
+        run_id=run_id,
+        stage="research",
+        message="Research phase started"
+    )
     
     # TODO: Trigger async orchestrator workflow
     
@@ -273,20 +363,17 @@ def submit_approval(
     db.refresh(approval)
     
     # Emit SSE update
-    if run_id not in run_updates:
-        run_updates[run_id] = []
-    
     action_msg = ""
     if approval_data.action == "regenerate":
         action_msg = " - will regenerate with feedback"
     elif approval_data.action == "reject":
         action_msg = " - rejected"
     
-    run_updates[run_id].append({
-        "stage": stage,
-        "message": f"Stage '{stage}' {'approved' if approval_data.approved else 'rejected'}{action_msg}",
-        "timestamp": datetime.utcnow().isoformat()
-    })
+    emit_progress(
+        run_id=run_id,
+        stage=stage,
+        message=f"Stage '{stage}' {'approved' if approval_data.approved else 'rejected'}{action_msg}"
+    )
     
     # TODO: If action is "regenerate", trigger regeneration workflow
     
@@ -346,13 +433,14 @@ async def get_progress_stream(
                 break
             
             # Get new updates
-            if run_id in run_updates and len(run_updates[run_id]) > last_index:
-                for update in run_updates[run_id][last_index:]:
+            updates = get_updates(run_id, from_index=last_index)
+            if updates:
+                for update in updates:
                     yield {
                         "event": "progress",
                         "data": json.dumps(update)
                     }
-                last_index = len(run_updates[run_id])
+                last_index = last_index + len(updates)
             
             await asyncio.sleep(1)  # Poll every second
     

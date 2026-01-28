@@ -13,6 +13,7 @@ from app.agents.spec_agent import SpecAgent
 from app.agents.code_agent import CodeAgent
 from app.agents.validation_agent import ValidationAgent
 from app.database import Run, Artifact, Approval, RunStatus, ArtifactType
+from app.runs.progress_emitter import emit_progress
 
 
 class WorkflowState(TypedDict, total=False):
@@ -105,6 +106,17 @@ class Orchestrator:
     
     async def _research_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute research phase."""
+        run_id = state["run_id"]
+        
+        # Emit start event
+        emit_progress(run_id, "research", "Research phase started")
+        
+        # Update run stage
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if run:
+            run.current_stage = "research"
+            db.commit()
+        
         result = await self.research_agent.execute({
             "product_request": state["product_request"]
         })
@@ -121,13 +133,19 @@ class Orchestrator:
                 result["content"],
                 artifact_metadata=result.get("metadata")
             )
+            
+            # Emit completion event
+            emit_progress(run_id, "research", "Research phase completed")
         else:
             state["error"] = result.get("error", "Research failed")
+            emit_progress(run_id, "research", f"Research phase failed: {state['error']}")
         
         return state
     
     async def _epics_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute epic generation phase."""
+        run_id = state["run_id"]
+        
         # Check if we need to incorporate feedback from rejection
         feedback = ""
         approval = db.query(Approval).filter(
@@ -140,8 +158,16 @@ class Orchestrator:
             # Increment regeneration count
             regeneration_count = state.get("epic_regeneration_count", 0) + 1
             state["epic_regeneration_count"] = regeneration_count
+            emit_progress(run_id, "epics", f"Regenerating epics with feedback (attempt {regeneration_count})")
         else:
             regeneration_count = 0
+            emit_progress(run_id, "epics", "Epic generation started")
+        
+        # Update run stage
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if run:
+            run.current_stage = "epics"
+            db.commit()
         
         result = await self.epic_agent.execute({
             "product_request": state["product_request"],
@@ -165,13 +191,19 @@ class Orchestrator:
             
             # Create or update approval gate
             self._create_or_update_approval(db, state["run_id"], "epics")
+            
+            # Emit completion event
+            emit_progress(run_id, "epics", "Epic generation completed")
         else:
             state["error"] = result.get("error", "Epic generation failed")
+            emit_progress(run_id, "epics", f"Epic generation failed: {state['error']}")
         
         return state
     
     async def _stories_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute story generation phase."""
+        run_id = state["run_id"]
+        
         # Check if we need to incorporate feedback from rejection
         feedback = ""
         approval = db.query(Approval).filter(
@@ -183,8 +215,16 @@ class Orchestrator:
             feedback = approval.feedback
             regeneration_count = state.get("story_regeneration_count", 0) + 1
             state["story_regeneration_count"] = regeneration_count
+            emit_progress(run_id, "stories", f"Regenerating stories with feedback (attempt {regeneration_count})")
         else:
             regeneration_count = 0
+            emit_progress(run_id, "stories", "Story generation started")
+        
+        # Update run stage
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if run:
+            run.current_stage = "stories"
+            db.commit()
         
         result = await self.story_agent.execute({
             "epics": state["epics"],
@@ -207,13 +247,19 @@ class Orchestrator:
             
             # Create or update approval gate
             self._create_or_update_approval(db, state["run_id"], "stories")
+            
+            # Emit completion event
+            emit_progress(run_id, "stories", "Story generation completed")
         else:
             state["error"] = result.get("error", "Story generation failed")
+            emit_progress(run_id, "stories", f"Story generation failed: {state['error']}")
         
         return state
     
     async def _specs_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute spec generation phase."""
+        run_id = state["run_id"]
+        
         # Check if we need to incorporate feedback from rejection
         feedback = ""
         approval = db.query(Approval).filter(
@@ -225,8 +271,16 @@ class Orchestrator:
             feedback = approval.feedback
             regeneration_count = state.get("spec_regeneration_count", 0) + 1
             state["spec_regeneration_count"] = regeneration_count
+            emit_progress(run_id, "specs", f"Regenerating specs with feedback (attempt {regeneration_count})")
         else:
             regeneration_count = 0
+            emit_progress(run_id, "specs", "Spec generation started")
+        
+        # Update run stage
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if run:
+            run.current_stage = "specs"
+            db.commit()
         
         result = await self.spec_agent.execute({
             "stories": state["stories"],
@@ -249,13 +303,27 @@ class Orchestrator:
             
             # Create or update approval gate
             self._create_or_update_approval(db, state["run_id"], "specs")
+            
+            # Emit completion event
+            emit_progress(run_id, "specs", "Spec generation completed")
         else:
             state["error"] = result.get("error", "Spec generation failed")
+            emit_progress(run_id, "specs", f"Spec generation failed: {state['error']}")
         
         return state
     
     async def _code_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute code generation phase."""
+        run_id = state["run_id"]
+        
+        emit_progress(run_id, "code", "Code generation started")
+        
+        # Update run stage
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if run:
+            run.current_stage = "code"
+            db.commit()
+        
         result = await self.code_agent.execute({
             "specs": state["specs"]
         })
@@ -272,13 +340,27 @@ class Orchestrator:
                 result["content"],
                 artifact_metadata=result.get("metadata")
             )
+            
+            # Emit completion event
+            emit_progress(run_id, "code", "Code generation completed")
         else:
             state["error"] = result.get("error", "Code generation failed")
+            emit_progress(run_id, "code", f"Code generation failed: {state['error']}")
         
         return state
     
     async def _validation_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Execute validation phase."""
+        run_id = state["run_id"]
+        
+        emit_progress(run_id, "validation", "Validation started")
+        
+        # Update run stage
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if run:
+            run.current_stage = "validation"
+            db.commit()
+        
         result = await self.validation_agent.execute({
             "code": state["code"]
         })
@@ -295,13 +377,18 @@ class Orchestrator:
                 result["content"],
                 artifact_metadata=result.get("metadata")
             )
+            
+            # Emit completion event
+            emit_progress(run_id, "validation", "Validation completed")
         else:
             state["error"] = result.get("error", "Validation failed")
+            emit_progress(run_id, "validation", f"Validation failed: {state['error']}")
         
         return state
     
     async def _complete_node(self, state: WorkflowState, db: Session) -> WorkflowState:
         """Complete the workflow."""
+        run_id = state["run_id"]
         state["current_stage"] = "completed"
         
         # Update run status
@@ -310,6 +397,9 @@ class Orchestrator:
             run.status = RunStatus.COMPLETED
             run.current_stage = "completed"
             db.commit()
+        
+        # Emit completion event
+        emit_progress(run_id, "completed", "Workflow completed successfully")
         
         return state
     
