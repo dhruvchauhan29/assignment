@@ -27,20 +27,13 @@ async def create_project(
     - **description**: Optional project description
 
     **Validation:**
-    - Empty product_request → 400 Bad Request
+    - Empty product_request → 422 Unprocessable Entity
     """
-    # Validate product request (schema validation already handles this, but double-check)
-    if not project_data.product_request or not project_data.product_request.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Product request cannot be empty"
-        )
-
     # Create project
     db_project = Project(
         name=project_data.name,
         description=project_data.description,
-        product_request=project_data.product_request.strip(),
+        product_request=project_data.product_request,
         documents=None,
         owner_id=current_user.id
     )
