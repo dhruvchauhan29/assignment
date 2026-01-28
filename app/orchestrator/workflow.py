@@ -54,53 +54,53 @@ class Orchestrator:
         """Build the LangGraph workflow."""
         workflow = StateGraph(WorkflowState)
 
-        # Add nodes for each stage
-        workflow.add_node("research", self._research_node)
-        workflow.add_node("epics", self._epics_node)
+        # Add nodes for each stage (using different names than state attributes)
+        workflow.add_node("research_phase", self._research_node)
+        workflow.add_node("epics_phase", self._epics_node)
         workflow.add_node("wait_epic_approval", self._wait_epic_approval_node)
-        workflow.add_node("stories", self._stories_node)
+        workflow.add_node("stories_phase", self._stories_node)
         workflow.add_node("wait_story_approval", self._wait_story_approval_node)
-        workflow.add_node("specs", self._specs_node)
+        workflow.add_node("specs_phase", self._specs_node)
         workflow.add_node("wait_spec_approval", self._wait_spec_approval_node)
-        workflow.add_node("code", self._code_node)
-        workflow.add_node("validation", self._validation_node)
+        workflow.add_node("code_phase", self._code_node)
+        workflow.add_node("validation_phase", self._validation_node)
         workflow.add_node("complete", self._complete_node)
 
         # Define edges
-        workflow.set_entry_point("research")
-        workflow.add_edge("research", "epics")
-        workflow.add_edge("epics", "wait_epic_approval")
+        workflow.set_entry_point("research_phase")
+        workflow.add_edge("research_phase", "epics_phase")
+        workflow.add_edge("epics_phase", "wait_epic_approval")
         workflow.add_conditional_edges(
             "wait_epic_approval",
             self._check_approval,
             {
-                "approved": "stories",
-                "rejected": "epics",
+                "approved": "stories_phase",
+                "rejected": "epics_phase",
                 "pending": END  # Exit workflow when waiting for approval
             }
         )
-        workflow.add_edge("stories", "wait_story_approval")
+        workflow.add_edge("stories_phase", "wait_story_approval")
         workflow.add_conditional_edges(
             "wait_story_approval",
             self._check_approval,
             {
-                "approved": "specs",
-                "rejected": "stories",
+                "approved": "specs_phase",
+                "rejected": "stories_phase",
                 "pending": END  # Exit workflow when waiting for approval
             }
         )
-        workflow.add_edge("specs", "wait_spec_approval")
+        workflow.add_edge("specs_phase", "wait_spec_approval")
         workflow.add_conditional_edges(
             "wait_spec_approval",
             self._check_approval,
             {
-                "approved": "code",
-                "rejected": "specs",
+                "approved": "code_phase",
+                "rejected": "specs_phase",
                 "pending": END  # Exit workflow when waiting for approval
             }
         )
-        workflow.add_edge("code", "validation")
-        workflow.add_edge("validation", "complete")
+        workflow.add_edge("code_phase", "validation_phase")
+        workflow.add_edge("validation_phase", "complete")
         workflow.add_edge("complete", END)
 
         return workflow.compile()
