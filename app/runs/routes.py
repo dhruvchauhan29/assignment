@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -21,6 +21,7 @@ from app.database import (
     User,
     get_db,
 )
+from app.orchestrator.workflow import Orchestrator
 from app.runs.progress_emitter import emit_progress, get_updates
 from app.runs.schemas import (
     ApprovalCreate,
@@ -32,6 +33,9 @@ from app.runs.schemas import (
 )
 
 router = APIRouter(prefix="/api/runs", tags=["Runs"])
+
+# Create a single orchestrator instance to be reused
+orchestrator = Orchestrator()
 
 
 @router.post("", response_model=RunResponse, status_code=status.HTTP_201_CREATED)
@@ -211,8 +215,9 @@ def get_run_stories(
 
 
 @router.post("/{run_id}/start")
-def start_run(
+async def start_run(
     run_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -248,9 +253,29 @@ def start_run(
         message="Research phase started"
     )
 
-    # TODO: Trigger async orchestrator workflow
+    # Get the product request from the project
+    product_request = run.project.product_request
+
+    # Trigger async orchestrator workflow in background
+    background_tasks.add_task(execute_workflow_task, run_id, product_request)
 
     return {"status": "started", "run_id": run_id}
+
+
+async def execute_workflow_task(run_id: int, product_request: str):
+    """
+    Background task to execute the orchestrator workflow.
+    
+    Args:
+        run_id: ID of the run to execute
+        product_request: Product request text
+    """
+    try:
+        await orchestrator.execute_run(run_id, product_request)
+    except Exception as e:
+        # Log the error (in production, use proper logging)
+        print(f"Error executing workflow for run {run_id}: {str(e)}")
+        # Error is already handled in execute_run, so we just log here
 
 
 @router.post("/{run_id}/pause")
