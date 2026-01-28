@@ -121,3 +121,97 @@ def test_delete_project(client, auth_token, db, test_user):
         headers={"Authorization": f"Bearer {auth_token}"}
     )
     assert response.status_code == 404
+
+
+def test_create_project_empty_product_request(client, auth_token):
+    """Test creating a project with empty product request."""
+    response = client.post(
+        "/api/projects",
+        headers={"Authorization": f"Bearer {auth_token}"},
+        json={
+            "name": "Test Project",
+            "description": "A test project",
+            "product_request": ""
+        }
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "detail" in data
+    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])
+
+
+def test_create_project_whitespace_only_product_request(client, auth_token):
+    """Test creating a project with whitespace-only product request."""
+    response = client.post(
+        "/api/projects",
+        headers={"Authorization": f"Bearer {auth_token}"},
+        json={
+            "name": "Test Project",
+            "description": "A test project",
+            "product_request": "   \n\t   "
+        }
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "detail" in data
+    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])
+
+
+def test_create_project_trims_whitespace(client, auth_token):
+    """Test that product request whitespace is trimmed."""
+    response = client.post(
+        "/api/projects",
+        headers={"Authorization": f"Bearer {auth_token}"},
+        json={
+            "name": "Test Project",
+            "description": "A test project",
+            "product_request": "  Build a simple todo app  "
+        }
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["product_request"] == "Build a simple todo app"
+
+
+def test_update_project_empty_product_request(client, auth_token, db, test_user):
+    """Test updating a project with empty product request."""
+    project = Project(
+        name="Test Project",
+        product_request="Build something",
+        owner_id=test_user.id
+    )
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    
+    response = client.put(
+        f"/api/projects/{project.id}",
+        headers={"Authorization": f"Bearer {auth_token}"},
+        json={"product_request": ""}
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "detail" in data
+    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])
+
+
+def test_update_project_whitespace_only_product_request(client, auth_token, db, test_user):
+    """Test updating a project with whitespace-only product request."""
+    project = Project(
+        name="Test Project",
+        product_request="Build something",
+        owner_id=test_user.id
+    )
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    
+    response = client.put(
+        f"/api/projects/{project.id}",
+        headers={"Authorization": f"Bearer {auth_token}"},
+        json={"product_request": "   \n\t   "}
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert "detail" in data
+    assert any("Product Request cannot be empty" in str(error) for error in data["detail"])

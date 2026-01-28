@@ -1,7 +1,7 @@
 """
 Project Pydantic schemas.
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -11,6 +11,14 @@ class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
     product_request: str
+    
+    @field_validator('product_request')
+    @classmethod
+    def validate_product_request(cls, v: str) -> str:
+        """Validate that product_request is not empty or whitespace-only."""
+        if not v or not v.strip():
+            raise ValueError('Product Request cannot be empty or whitespace-only')
+        return v.strip()
 
 
 class ProjectUpdate(BaseModel):
@@ -18,6 +26,14 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     product_request: Optional[str] = None
+    
+    @field_validator('product_request')
+    @classmethod
+    def validate_product_request(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that product_request is not empty or whitespace-only if provided."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError('Product Request cannot be empty or whitespace-only')
+        return v.strip() if v else None
 
 
 class ProjectResponse(BaseModel):
