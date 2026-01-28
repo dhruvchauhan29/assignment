@@ -31,7 +31,7 @@ app = FastAPI(
     ## Features
     
     * **Authentication**: JWT-based user authentication with User/Admin roles
-    * **Projects**: CRUD operations for managing projects
+    * **Projects**: CRUD operations for managing projects with text-only product requests
     * **Runs**: Execute multi-stage workflows with real-time progress
     * **Agents**: Research, Epic, Story, Spec, Code, and Validation agents
     * **SSE**: Real-time progress updates via Server-Sent Events
@@ -42,7 +42,7 @@ app = FastAPI(
     ## Workflow
     
     1. **Register/Login** - Create account and authenticate
-    2. **Create Project** - Submit product request
+    2. **Create Project** - Submit text-based product request (no file uploads)
     3. **Start Run** - Begin execution
     4. **Monitor Progress** - Watch real-time SSE updates
     5. **Approve Stages** - Review and approve epics, stories, specs

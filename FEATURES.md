@@ -15,7 +15,8 @@
 #### 2. Project Management
 - ✅ Create, Read, Update, Delete (CRUD) operations
 - ✅ Project ownership and access control
-- ✅ Product request storage
+- ✅ Product request storage (text-only, no file uploads)
+- ✅ Product request validation (rejects empty/whitespace-only input)
 - ✅ Project metadata (name, description, timestamps)
 - ✅ User-project relationship management
 
@@ -346,7 +347,7 @@ These features could be added in future iterations:
 - Webhooks for notifications
 - Background task queue (Celery)
 - Redis caching
-- File upload support
+- Document/file upload for requirement intake (currently text-only by design)
 - Multi-language support
 - Advanced search
 - Analytics dashboard

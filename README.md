@@ -135,6 +135,8 @@ curl -H "Authorization: Bearer YOUR_TOKEN" ...
 
 ### 1. Create a Project
 
+**Note:** Projects require a text-based Product Request. File uploads are not supported for requirement intake.
+
 ```bash
 curl -X POST "http://localhost:8000/api/projects" \
   -H "Authorization: Bearer YOUR_TOKEN" \

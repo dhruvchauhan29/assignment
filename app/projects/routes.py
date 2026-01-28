@@ -19,11 +19,13 @@ def create_project(
     db: Session = Depends(get_db)
 ):
     """
-    Create a new project.
+    Create a new project with text-only product request.
     
-    - **name**: Project name
+    - **name**: Project name (required)
     - **description**: Optional project description
-    - **product_request**: High-level product request/requirements
+    - **product_request**: High-level product request/requirements (required, text-only, cannot be empty or whitespace-only)
+    
+    Note: File uploads are not supported. Product requests must be submitted as text.
     """
     db_project = Project(
         name=project_data.name,
