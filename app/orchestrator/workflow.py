@@ -76,7 +76,7 @@ class Orchestrator:
             {
                 "approved": "stories",
                 "rejected": "epics",
-                "pending": "wait_epic_approval"
+                "pending": END  # Exit workflow when waiting for approval
             }
         )
         workflow.add_edge("stories", "wait_story_approval")
@@ -86,7 +86,7 @@ class Orchestrator:
             {
                 "approved": "specs",
                 "rejected": "stories",
-                "pending": "wait_story_approval"
+                "pending": END  # Exit workflow when waiting for approval
             }
         )
         workflow.add_edge("specs", "wait_spec_approval")
@@ -96,7 +96,7 @@ class Orchestrator:
             {
                 "approved": "code",
                 "rejected": "specs",
-                "pending": "wait_spec_approval"
+                "pending": END  # Exit workflow when waiting for approval
             }
         )
         workflow.add_edge("code", "validation")
@@ -540,7 +540,139 @@ class Orchestrator:
 
         db.commit()
 
-    async def execute_run(self, run_id: int, product_request: str):
+    async def continue_run(self, run_id: int, from_stage: str):
+        """
+        Continue a run from a specific stage after approval.
+        
+        Args:
+            run_id: ID of the run to continue
+            from_stage: Stage to continue from ('epics', 'stories', 'specs')
+        """
+        from app.database import SessionLocal
+        
+        # Get current run state from database
+        db = SessionLocal()
+        try:
+            run = db.query(Run).filter(Run.id == run_id).first()
+            if not run:
+                raise ValueError(f"Run {run_id} not found")
+            
+            # Get artifacts to reconstruct state
+            artifacts = db.query(Artifact).filter(Artifact.run_id == run_id).all()
+            
+            # Build state from artifacts
+            state: WorkflowState = {
+                "run_id": run_id,
+                "product_request": run.project.product_request,
+                "research": "",
+                "epics": "",
+                "stories": "",
+                "specs": "",
+                "code": "",
+                "validation": "",
+                "messages": [],
+                "current_stage": from_stage,
+                "error": "",
+                "epic_regeneration_count": 0,
+                "story_regeneration_count": 0,
+                "spec_regeneration_count": 0
+            }
+            
+            # Populate state from artifacts
+            for artifact in artifacts:
+                if artifact.artifact_type == ArtifactType.RESEARCH:
+                    state["research"] = artifact.content
+                elif artifact.artifact_type == ArtifactType.EPICS:
+                    state["epics"] = artifact.content
+                elif artifact.artifact_type == ArtifactType.STORIES:
+                    state["stories"] = artifact.content
+                elif artifact.artifact_type == ArtifactType.SPECS:
+                    state["specs"] = artifact.content
+                elif artifact.artifact_type == ArtifactType.CODE:
+                    state["code"] = artifact.content
+                elif artifact.artifact_type == ArtifactType.VALIDATION:
+                    state["validation"] = artifact.content
+            
+            # Update run status to running
+            run.status = RunStatus.RUNNING
+            db.commit()
+        finally:
+            db.close()
+        
+        try:
+            # Continue execution based on stage
+            if from_stage == "epics":
+                # Check if we need to regenerate or continue to stories
+                db = SessionLocal()
+                try:
+                    approval = db.query(Approval).filter(
+                        Approval.run_id == run_id,
+                        Approval.stage == "epics"
+                    ).first()
+                    
+                    if approval and approval.action == "regenerate":
+                        # Re-run epics node
+                        state = await self._epics_node(state)
+                        # Then wait for approval again
+                    elif approval and approval.approved:
+                        # Continue to stories
+                        state = await self._stories_node(state)
+                        # Then wait for story approval
+                finally:
+                    db.close()
+            
+            elif from_stage == "stories":
+                # Check if we need to regenerate or continue to specs
+                db = SessionLocal()
+                try:
+                    approval = db.query(Approval).filter(
+                        Approval.run_id == run_id,
+                        Approval.stage == "stories"
+                    ).first()
+                    
+                    if approval and approval.action == "regenerate":
+                        # Re-run stories node
+                        state = await self._stories_node(state)
+                    elif approval and approval.approved:
+                        # Continue to specs
+                        state = await self._specs_node(state)
+                finally:
+                    db.close()
+            
+            elif from_stage == "specs":
+                # Check if we need to regenerate or continue to code
+                db = SessionLocal()
+                try:
+                    approval = db.query(Approval).filter(
+                        Approval.run_id == run_id,
+                        Approval.stage == "specs"
+                    ).first()
+                    
+                    if approval and approval.action == "regenerate":
+                        # Re-run specs node
+                        state = await self._specs_node(state)
+                    elif approval and approval.approved:
+                        # Continue to code and validation
+                        state = await self._code_node(state)
+                        state = await self._validation_node(state)
+                        state = await self._complete_node(state)
+                finally:
+                    db.close()
+            
+            return state
+            
+        except Exception as e:
+            # Update error status
+            db = SessionLocal()
+            try:
+                run = db.query(Run).filter(Run.id == run_id).first()
+                if run:
+                    run.status = RunStatus.FAILED
+                    run.error_message = str(e)
+                    db.commit()
+            finally:
+                db.close()
+            raise
         """
         Execute a complete run through the workflow.
 
