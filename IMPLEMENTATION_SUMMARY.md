@@ -186,7 +186,6 @@ This implementation successfully transforms the AI Product-to-Code backend into 
 - Comprehensive milestone features section
 - Enhanced workflow diagram
 - API usage examples for all approval actions
-- File upload documentation
 - Validation error code reference
 
 **Code Documentation:**
@@ -197,25 +196,23 @@ This implementation successfully transforms the AI Product-to-Code backend into 
 ## API Changes
 
 **Breaking Changes:**
-- Project creation endpoint now uses multipart/form-data instead of JSON
-- Required for file upload support
+- Project creation endpoint changed from multipart/form-data to JSON
+- File upload functionality removed from project creation
 
 **New Endpoints:**
 - All existing endpoints enhanced with new features
 - No new endpoint paths added
 
 **Response Schema Changes:**
-- ProjectResponse now includes `documents` field
-- ApprovalResponse now includes `action` field
+- ProjectResponse includes `documents` field (will be None for new projects)
+- ApprovalResponse includes `action` field
 
 ## Security
 
 **Implemented Protections:**
 1. Input validation on all user inputs
-2. File upload restrictions (size, type, count)
-3. Filename sanitization (path traversal prevention)
-4. Action validation (prevents invalid approval actions)
-5. Authentication required on all protected endpoints
+2. Action validation (prevents invalid approval actions)
+3. Authentication required on all protected endpoints
 
 **Security Scan Results:**
 - CodeQL scan: 0 vulnerabilities found

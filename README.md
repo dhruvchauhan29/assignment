@@ -5,7 +5,7 @@ A backend-only multi-agent AI system that transforms high-level Product Requests
 ## 🎯 Features
 
 ### ✨ Milestone-Driven Workflow
-- **Foundation (Milestone 1)**: Complete project creation with input validation and document uploads
+- **Foundation (Milestone 1)**: Complete project creation with input validation for text-only Product Requests
 - **Research-First (Milestone 2)**: Mandatory evidence-based research before planning
 - **Comprehensive Epics (Milestone 3)**: Full epic planning with priorities, dependencies, risks, and Mermaid diagrams
 - **Approval Gates**: User approval with regeneration support at every stage
@@ -17,7 +17,6 @@ A backend-only multi-agent AI system that transforms high-level Product Requests
 - **Real-Time Updates**: Server-Sent Events (SSE) for live progress tracking
 - **Enhanced Approval System**: Approve, reject, or regenerate with feedback at each gate
 - **JWT Authentication**: User and Admin role-based access control
-- **Document Upload**: Support for PDF, TXT, MD, DOC, DOCX (max 20MB)
 - **Artifact Storage**: PostgreSQL storage for all generated artifacts with rich metadata
 - **Observability**: Langfuse integration for LLM call tracing and token tracking
 - **Export Functionality**: Download epics, stories, specs, code, and validation reports
@@ -25,7 +24,7 @@ A backend-only multi-agent AI system that transforms high-level Product Requests
 ## 🏗 Architecture
 
 ```
-Product Request (+ Documents) → Research (URLs + Analysis) → 
+Product Request → Research (URLs + Analysis) → 
 Epics (P0/P1/P2 + Dependencies + Mermaid) → [Approval Gate] → 
 Stories (Given/When/Then) → [Approval Gate] → 
 Specs (API + Models + Tests) → [Approval Gate] → 
@@ -153,29 +152,19 @@ curl -H "Authorization: Bearer YOUR_TOKEN" ...
 
 ### 1. Create a Project
 
-**Option 1: Simple project (JSON)**
 ```bash
 curl -X POST "http://localhost:8000/api/projects" \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "name=E-commerce Platform" \
-  -F "description=Modern e-commerce platform with AI recommendations" \
-  -F "product_request=Build an e-commerce platform with product catalog, shopping cart, checkout, payment processing, and AI-powered product recommendations."
-```
-
-**Option 2: With document uploads**
-```bash
-curl -X POST "http://localhost:8000/api/projects" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "name=E-commerce Platform" \
-  -F "product_request=Build an e-commerce platform..." \
-  -F "files=@requirements.pdf" \
-  -F "files=@architecture.md"
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "E-commerce Platform",
+    "description": "Modern e-commerce platform with AI recommendations",
+    "product_request": "Build an e-commerce platform with product catalog, shopping cart, checkout, payment processing, and AI-powered product recommendations."
+  }'
 ```
 
 **Validation:**
-- Product request cannot be empty (→ 400)
-- Files must be < 20MB (→ 413)
-- Supported file types: PDF, TXT, MD, DOC, DOCX (→ 415 for others)
+- Product request cannot be empty (→ 422)
 
 ### 2. Create a Run
 

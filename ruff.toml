@@ -1,8 +1,7 @@
-[tool.ruff]
 line-length = 100
 target-version = "py39"
 
-[tool.ruff.lint]
+[lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -16,5 +15,5 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
 ]
 
-[tool.ruff.lint.isort]
+[lint.isort]
 known-third-party = ["fastapi", "pydantic", "sqlalchemy"]
