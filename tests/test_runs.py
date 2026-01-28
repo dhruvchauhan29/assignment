@@ -1,8 +1,7 @@
 """
 Tests for run endpoints.
 """
-import pytest
-from app.database import Project, Run, Artifact, ArtifactType
+from app.database import Artifact, ArtifactType, Project, Run, RunStatus
 
 
 def test_create_run(client, auth_token, db, test_user):
@@ -16,7 +15,7 @@ def test_create_run(client, auth_token, db, test_user):
     db.add(project)
     db.commit()
     db.refresh(project)
-    
+
     response = client.post(
         "/api/runs",
         headers={"Authorization": f"Bearer {auth_token}"},
@@ -48,12 +47,12 @@ def test_get_run(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
+
     run = Run(project_id=project.id)
     db.add(run)
     db.commit()
     db.refresh(run)
-    
+
     response = client.get(
         f"/api/runs/{run.id}",
         headers={"Authorization": f"Bearer {auth_token}"}
@@ -74,12 +73,12 @@ def test_start_run(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
+
     run = Run(project_id=project.id)
     db.add(run)
     db.commit()
     db.refresh(run)
-    
+
     response = client.post(
         f"/api/runs/{run.id}/start",
         headers={"Authorization": f"Bearer {auth_token}"}
@@ -87,7 +86,7 @@ def test_start_run(client, auth_token, db, test_user):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "started"
-    
+
     # Verify run status updated
     db.refresh(run)
     assert run.status.value == "running"
@@ -103,12 +102,12 @@ def test_pause_run(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
-    run = Run(project_id=project.id, status="running")
+
+    run = Run(project_id=project.id, status=RunStatus.RUNNING)
     db.add(run)
     db.commit()
     db.refresh(run)
-    
+
     response = client.post(
         f"/api/runs/{run.id}/pause",
         headers={"Authorization": f"Bearer {auth_token}"}
@@ -128,12 +127,12 @@ def test_submit_approval(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
+
     run = Run(project_id=project.id)
     db.add(run)
     db.commit()
     db.refresh(run)
-    
+
     response = client.post(
         f"/api/runs/{run.id}/approvals/epics",
         headers={"Authorization": f"Bearer {auth_token}"},
@@ -159,16 +158,16 @@ def test_get_run_status(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
+
     run = Run(
         project_id=project.id,
-        status="running",
+        status=RunStatus.RUNNING,
         current_stage="epics"
     )
     db.add(run)
     db.commit()
     db.refresh(run)
-    
+
     response = client.get(
         f"/api/runs/{run.id}/status",
         headers={"Authorization": f"Bearer {auth_token}"}
@@ -190,12 +189,12 @@ def test_get_run_epics(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
+
     run = Run(project_id=project.id)
     db.add(run)
     db.commit()
     db.refresh(run)
-    
+
     # Create epic artifacts
     epic1 = Artifact(
         run_id=run.id,
@@ -211,7 +210,7 @@ def test_get_run_epics(client, auth_token, db, test_user):
     )
     db.add_all([epic1, epic2])
     db.commit()
-    
+
     response = client.get(
         f"/api/runs/{run.id}/epics",
         headers={"Authorization": f"Bearer {auth_token}"}
@@ -233,12 +232,12 @@ def test_get_run_stories(client, auth_token, db, test_user):
     )
     db.add(project)
     db.commit()
-    
+
     run = Run(project_id=project.id)
     db.add(run)
     db.commit()
     db.refresh(run)
-    
+
     # Create story artifacts
     story1 = Artifact(
         run_id=run.id,
@@ -261,7 +260,7 @@ def test_get_run_stories(client, auth_token, db, test_user):
     )
     db.add_all([story1, story2, research])
     db.commit()
-    
+
     response = client.get(
         f"/api/runs/{run.id}/stories",
         headers={"Authorization": f"Bearer {auth_token}"}

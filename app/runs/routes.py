@@ -11,7 +11,16 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from app.auth.utils import get_current_user
-from app.database import Approval, Artifact, Project, Run, RunStatus, User, get_db
+from app.database import (
+    Approval,
+    Artifact,
+    ArtifactType,
+    Project,
+    Run,
+    RunStatus,
+    User,
+    get_db,
+)
 from app.runs.progress_emitter import emit_progress, get_updates
 from app.runs.schemas import (
     ApprovalCreate,
@@ -52,7 +61,7 @@ def create_run(
     db_run = Run(
         project_id=run_data.project_id,
         status=RunStatus.PENDING,
-        current_stage="initialized"
+        current_stage=""
     )
     db.add(db_run)
     db.commit()
@@ -164,7 +173,6 @@ def get_run_epics(
             detail="Run not found"
         )
 
-    from app.database import ArtifactType
     epics = db.query(Artifact).filter(
         Artifact.run_id == run_id,
         Artifact.artifact_type == ArtifactType.EPICS
@@ -195,7 +203,6 @@ def get_run_stories(
             detail="Run not found"
         )
 
-    from app.database import ArtifactType
     stories = db.query(Artifact).filter(
         Artifact.run_id == run_id,
         Artifact.artifact_type == ArtifactType.STORIES
